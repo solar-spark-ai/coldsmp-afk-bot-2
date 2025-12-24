@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AFK Bot</title>
+    <style>
+        body {
+            background-color: #1a1a1a;
+            color: #fff;
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            margin: 0;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #FFD700;
+            font-size: 32px;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+        }
+        h2 {
+            color: #FFD700;
+            margin-top: 30px;
+            border-bottom: 2px solid #444;
+            padding-bottom: 10px;
+        }
+        .panel {
+            background-color: #2a2a2a;
+            border: 1px solid #444;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        p {
+            font-size: 16px;
+            margin: 10px 0;
+        }
+        button {
+            background-color: #FFD700;
+            color: #000;
+            border: none;
+            padding: 12px 20px;
+            margin: 5px 5px 5px 0;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+        button:hover {
+            background-color: #fff;
+            transform: scale(1.05);
+        }
+        textarea {
+            background-color: #0a0a0a;
+            color: #fff;
+            border: 1px solid #FFD700;
+            padding: 10px;
+            font-family: monospace;
+            width: 100%;
+            box-sizing: border-box;
+            border-radius: 4px;
+        }
+        #statusText {
+            color: #FFD700;
+            font-weight: bold;
+            font-size: 18px;
+        }
+        input {
+            background-color: #0a0a0a;
+            color: #fff;
+            border: 1px solid #444;
+            padding: 8px;
+            margin: 5px 0;
+            width: 100%;
+            box-sizing: border-box;
+            border-radius: 4px;
+        }
+        input:focus {
+            outline: none;
+            border-color: #FFD700;
+            box-shadow: 0 0 5px rgba(255, 215, 0, 0.3);
+        }
+        label {
+            color: #FFD700;
+            font-weight: bold;
+            display: block;
+            margin-top: 10px;
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .button-group {
+            margin-top: 15px;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 5px 10px;
+            background-color: #444;
+            border-radius: 4px;
+            border: 1px solid #FFD700;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 AFK Bot</h1>
+        
+        <div class="panel">
+            <p>Status: <span class="status-badge"><span id="statusText">Stopped</span></span></p>
+            <div class="button-group">
+                <button onclick="startBot()">Start Bot</button>
+                <button onclick="stopBot()">Stop Bot</button>
+                <button onclick="toggleSettings()">⚙️ Settings</button>
+            </div>
+        </div>
+
+        <div id="settingsPanel" class="panel" style="display: none;">
+            <h2>Bot Settings</h2>
+            
+            <h3 style="color: #FFD700; margin-top: 0;">Bot Account</h3>
+            <div class="form-row">
+                <div>
+                    <label>Username</label>
+                    <input type="text" id="botUsername">
+                </div>
+                <div>
+                    <label>Password</label>
+                    <input type="password" id="botPassword">
+                </div>
+            </div>
+            <div>
+                <label>Auth Type</label>
+                <input type="text" id="botAuth" value="mojang">
+            </div>
+
+            <h3 style="color: #FFD700;">Server</h3>
+            <div class="form-row">
+                <div>
+                    <label>Server IP</label>
+                    <input type="text" id="serverIp">
+                </div>
+                <div>
+                    <label>Server Port</label>
+                    <input type="number" id="serverPort">
+                </div>
+            </div>
+            <div>
+                <label>Server Version</label>
+                <input type="text" id="serverVersion">
+            </div>
+
+            <div class="button-group">
+                <button onclick="saveSettings()">Save Settings</button>
+                <button onclick="toggleSettings()">Cancel</button>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2>Console Logs</h2>
+            <textarea id="consoleBox" readonly style="height: 400px;"></textarea>
+        </div>
+    </div>
+
+    <script>
+        function toggleSettings() {
+            const panel = document.getElementById('settingsPanel');
+            panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+            if (panel.style.display === 'block') {
+                loadSettings();
+            }
+        }
+
+        function loadSettings() {
+            fetch('/settings')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('botUsername').value = data['bot-account'].username;
+                    document.getElementById('botPassword').value = data['bot-account'].password;
+                    document.getElementById('botAuth').value = data['bot-account'].type;
+                    document.getElementById('serverIp').value = data.server.ip;
+                    document.getElementById('serverPort').value = data.server.port;
+                    document.getElementById('serverVersion').value = data.server.version;
+                });
+        }
+
+        function saveSettings() {
+            const newConfig = {
+                'bot-account': {
+                    username: document.getElementById('botUsername').value,
+                    password: document.getElementById('botPassword').value,
+                    type: document.getElementById('botAuth').value
+                },
+                server: {
+                    ip: document.getElementById('serverIp').value,
+                    port: parseInt(document.getElementById('serverPort').value),
+                    version: document.getElementById('serverVersion').value
+                }
+            };
+
+            fetch('/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(newConfig)
+            })
+                .then(response => response.json())
+                .then(data => {
+                    alert('Settings saved!');
+                    toggleSettings();
+                });
+        }
+
+        function updateStatus() {
+            fetch('/status')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('statusText').textContent = data.running ? 'Running' : 'Stopped';
+                });
+        }
+
+        function updateLogs() {
+            fetch('/logs')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('consoleBox').value = data.logs.join('\n');
+                    const textarea = document.getElementById('consoleBox');
+                    textarea.scrollTop = textarea.scrollHeight;
+                });
+        }
+
+        function startBot() {
+            fetch('/start', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    updateStatus();
+                });
+        }
+
+        function stopBot() {
+            fetch('/stop', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    updateStatus();
+                });
+        }
+
+        updateStatus();
+        updateLogs();
+        setInterval(updateStatus, 1000);
+        setInterval(updateLogs, 1000);
+    </script>
+</body>
+</html>
